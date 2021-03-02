@@ -11,7 +11,7 @@ const val SAMPLES_FILE_PATH = "data/samples.csv"
 const val SAMPLES_WITH_EXTRA_ROWS_PATH = "data/samples_with_extra_rows.csv"
 const val SAMPLES_WITH_CHANGED_COLUMN_PATH = "data/samples_with_changed_column.csv"
 
-private const val ROWS_NUMBER = 1_000_000
+const val ROWS_NUMBER = 1_000_000
 
 private const val INTEGER_COLUMNS_NUMBER = 5
 private const val ENUM_COLUMNS_NUMBER = 10
