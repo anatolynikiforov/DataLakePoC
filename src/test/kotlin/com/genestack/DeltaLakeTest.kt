@@ -47,7 +47,7 @@ class DeltaLakeTest {
             .format(FORMAT)
             .save(TABLE)
 
-        assertEquals(ROWS_NUMBER + 1, getCount())
+        assertEquals(ROWS_NUMBER + 1L, getCount())
     }
 
     @Test
@@ -57,7 +57,7 @@ class DeltaLakeTest {
             .mode(MODE)
             .save(TABLE)
 
-        assertEquals(ROWS_NUMBER + 1, getCount())
+        assertEquals(ROWS_NUMBER + 1L, getCount())
     }
 
     @Test
@@ -74,11 +74,11 @@ class DeltaLakeTest {
             .mode(MODE)
             .save(TABLE)
 
-        assertEquals(1_100_001, getCount())
+        assertEquals(1_100_001L, getCount())
     }
 
     @Test
-    fun `update column`() {
+    fun `update column and read several versions`() {
         data.write()
             .format(FORMAT)
             .save(TABLE)
@@ -96,6 +96,13 @@ class DeltaLakeTest {
             .format(FORMAT)
             .load(TABLE)
             .select("_c0") // todo
+            .show(10)
+
+        sparkSession.read()
+            .format(FORMAT)
+            .option("versionAsOf", 0)
+            .load(TABLE)
+            .select("_c0")
             .show(10)
     }
 
