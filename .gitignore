@@ -1,6 +1,8 @@
 build/*
 data/*
 delta-lake/*
+spark-warehouse/*
+metastore_db/*
 .idea/
 .gradle
 *.class
