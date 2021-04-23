@@ -13,6 +13,7 @@ services:
       - 8080:8080
       - 9870:9870
       - 9866:9866
+      - 54310:54310
     networks:
       - cluster-network
 
@@ -27,7 +28,7 @@ services:
       - data-volume:/data
     ports:
     - 8081:8081
-    - 9866:9866
+    - 9867:9866
     networks:
       - cluster-network
 
@@ -42,12 +43,12 @@ services:
       - data-volume:/data
     ports:
       - 8082:8081
-      - 9867:9866
+      - 9868:9866
     networks:
       - cluster-network
 
   client:
-    image: spark-node:latest
+    image: spark-client:latest
     depends_on:
       - master
     env_file:
