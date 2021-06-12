@@ -6,6 +6,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
+/**
+ * Basic examples how to work with delta lake
+ */
 class DeltaLakeTest {
 
     private lateinit var sparkSession: SparkSession
