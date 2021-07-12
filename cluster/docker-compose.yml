@@ -8,9 +8,11 @@ services:
     volumes:
       - master-volume:/spark
       - data-volume:/data
+      - jars-volume:/jars
     ports:
       - 7077:7077
       - 8080:8080
+      - 4040:4040
       - 9870:9870
       - 9866:9866
       - 54310:54310
@@ -26,6 +28,7 @@ services:
     volumes:
       - worker-1-volume:/spark
       - data-volume:/data
+      - jars-volume:/jars
     ports:
     - 8081:8081
     - 9867:9866
@@ -41,6 +44,7 @@ services:
     volumes:
       - worker-2-volume:/spark
       - data-volume:/data
+      - jars-volume:/jars
     ports:
       - 8082:8081
       - 9868:9866
@@ -56,6 +60,7 @@ services:
     volumes:
       - client-volume:/spark
       - data-volume:/data
+      - jars-volume:/jars
     networks:
       - cluster-network
     stdin_open: true
@@ -70,5 +75,11 @@ volumes:
   worker-2-volume:
   client-volume:
   data-volume:
+  jars-volume:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: './jars'
 
 
