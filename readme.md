@@ -1,6 +1,6 @@
 ### DataLake PoC project
 
-#### Run local Spark-Hadoop cluster:
+#### Run Spark-Hadoop cluster:
 
 Note: If you don't need s3, you can go to #4
 
@@ -12,15 +12,41 @@ Note: If you don't need s3, you can go to #4
 `export AWS_SECRET_ACCESS_KEY=your_secret_access_key`
 
 3) Then execute `source ~/.zprofile`
-4) Build docker images: `cluster/build-docker.sh`
-5) Run cluster: `cluster/start-cluster.sh`
-6) Run spark-shell on cluster: `cluster/spark-shell-cluster.sh`
-7) Stop cluster (also deletes all data): `cluster/stop-cluster.sh`
+4) Go to project root directory: `cd your_workspace_path/DataLakePoC`   
+5) Build docker images: `cluster/build-docker.sh`
+6) Run cluster: `cluster/start-cluster.sh`
 
-#### How to work with s3:
+Spark cluster master UI will be available on `http://localhost:8080`
 
-1) Start cluster and connect to it (see instructions above)
+Worker-1 UI: `http://localhost:8081` 
 
-2) Execute (make sure there is `students-s3.csv` in the bucket) 
-  
-`spark.read.csv("s3a://genestack-spark-test/students-s3.csv").show`
+Worker-2 UI: `http://localhost:8082`
+
+HDFS UI: `http://localhost:9870/dfshealth.html#tab-overview`
+
+#### Run spark jobs using Spark-Hadoop spark shell:
+   
+Connect to cluster: `cluster/spark-shell-cluster.sh`
+
+Execute: `spark.read.json("s3a://genestack-spark-test/country-info.json").show`
+
+Spark cluster will read json file from aws s3 and show its contents in console
+
+See more examples in `com.genestack.DeltaLakeTest`
+
+To exit press `Ctrl+C`
+
+#### Stop Spark-Hadoop cluster (all data will be removed):
+
+`cluster/stop-cluster.sh`
+
+#### Run datalake pipeline using airflow:
+
+1) Build airflow image: `airflow/build-docker-airflow.sh
+2) Run airflow cluster: `cd airflow; docker-compose up -d`
+3) Run external sources cluster: `cd external-sources; docker-compose up -d`. 
+   This will launch postgres and mongo databases needed to execute pipeline
+4) Go to `http://localhost:8079/graph?dag_id=datalake_dag` and enable `datalake_dag` by switching toggle
+
+DAG should automatically start to execute. 
+Due to some bug, tasks finish in fail state despite completing successfully.
