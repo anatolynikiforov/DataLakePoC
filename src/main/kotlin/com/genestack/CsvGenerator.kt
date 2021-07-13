@@ -1,10 +1,8 @@
 package com.genestack
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.apache.commons.lang3.RandomStringUtils
-import java.io.*
+import java.io.BufferedWriter
+import java.io.FileWriter
 import kotlin.random.Random
 
 const val SAMPLES_FILE_PATH = "data/samples.csv"
@@ -19,31 +17,6 @@ private const val STRING_COLUMNS_NUMBER = 5
 
 private const val ENUM_SIZE = 1000
 private const val STRING_LENGTH = 20
-
-fun main(): Unit = runBlocking {
-    launch(Dispatchers.IO) {
-        generateCsv(defaultCsvGenerator())
-    }
-
-    launch(Dispatchers.IO) {
-        generateCsv(defaultCsvGenerator()) {
-            path = SAMPLES_WITH_EXTRA_ROWS_PATH
-            rowNumber = 1_100_000
-        }
-    }
-
-    launch(Dispatchers.IO) {
-        generateCsv(defaultCsvGenerator()) {
-            path = SAMPLES_WITH_CHANGED_COLUMN_PATH
-            column {
-                name = "integer_col_0"
-
-                var value = 0
-                nextValue = { value++ }
-            }
-        }
-    }
-}
 
 fun generateCsv(
     generator: CsvGenerator = CsvGenerator(),

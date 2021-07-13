@@ -1,10 +1,19 @@
 package com.genestack
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import org.apache.spark.sql.DataFrameReader
+import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.SparkSession
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.io.*
+import java.nio.file.Path
+import kotlin.io.path.exists
 
 /**
  * Basic examples how to work with delta lake
@@ -14,15 +23,66 @@ class DeltaLakeTest {
     private lateinit var sparkSession: SparkSession
 
     companion object {
+        private const val STUDENTS_FILE_PATH = "data/students.csv"
+
         const val TABLE = "delta-lake/samples-table"
-        const val FORMAT = "delta"
-        const val MODE = "overwrite"
+        const val DELTA = "delta"
         val SCHEMA = buildString {
             repeat(5) { append("col$it INT,") }
             for (i in 5..19) {
                 append("col$i STRING,")
             }
             append("col20 STRING")
+        }
+
+        @JvmStatic
+        @BeforeAll
+        fun generateSamplesFilesIfNotExist() = runBlocking {
+            if (Path.of(SAMPLES_FILE_PATH).exists()) {
+                println("File $SAMPLES_FILE_PATH exists, skipping")
+                return@runBlocking
+            }
+
+            launch(Dispatchers.IO) {
+                generateCsv(defaultCsvGenerator())
+            }
+
+            launch(Dispatchers.IO) {
+                generateCsv(defaultCsvGenerator()) {
+                    path = SAMPLES_WITH_EXTRA_ROWS_PATH
+                    rowNumber = 1_100_000
+                }
+            }
+
+            launch(Dispatchers.IO) {
+                generateCsv(defaultCsvGenerator()) {
+                    path = SAMPLES_WITH_CHANGED_COLUMN_PATH
+                    column {
+                        name = "integer_col_0"
+
+                        var value = 0
+                        nextValue = { value++ }
+                    }
+                }
+            }
+        }
+
+        @JvmStatic
+        @BeforeAll
+        fun generateStudentsFileIfNotExist() {
+            val file = File(STUDENTS_FILE_PATH)
+            if (file.exists()) {
+                println("File $STUDENTS_FILE_PATH exists, skipping")
+                return
+            }
+
+            file.writeText(
+                """
+                1,John Cena,44
+                2,Chuck Norris,81
+                3,Arnold Schwarzenegger,73
+                """.trimIndent()
+            )
         }
     }
 
@@ -43,15 +103,20 @@ class DeltaLakeTest {
 
     @AfterEach
     fun tearDown() {
-        // todo remove created files
+        listOf("delta-lake", "metastore_db", "spark-warehouse")
+            .map { Path.of(it).toFile() }
+            .forEach { it.deleteRecursively() }
+
+        // remove samples files manually if necessary
     }
 
     @Test
     fun `insert once`() {
         sparkSession.read()
+            .withHeader()
             .csv(SAMPLES_FILE_PATH)
             .write()
-            .format(FORMAT)
+            .format(DELTA)
             .save(TABLE)
 
         assertEquals(ROWS_NUMBER.toLong(), getCount())
@@ -60,10 +125,11 @@ class DeltaLakeTest {
     @Test
     fun `insert several times`() = repeat(10) {
         sparkSession.read()
+            .withHeader()
             .csv(SAMPLES_FILE_PATH)
             .write()
-            .format(FORMAT)
-            .mode(MODE)
+            .format(DELTA)
+            .mode(SaveMode.Overwrite)
             .save(TABLE)
 
         assertEquals(ROWS_NUMBER.toLong(), getCount())
@@ -72,111 +138,122 @@ class DeltaLakeTest {
     @Test
     fun `insert new rows`() {
         sparkSession.read()
+            .withHeader()
             .csv(SAMPLES_FILE_PATH)
             .write()
-            .format(FORMAT)
+            .format(DELTA)
             .save(TABLE)
 
         sparkSession
             .read()
+            .withHeader()
             .csv(SAMPLES_WITH_EXTRA_ROWS_PATH)
             .write()
-            .format(FORMAT)
-            .mode(MODE)
+            .format(DELTA)
+            .mode(SaveMode.Overwrite)
             .save(TABLE)
 
-        assertEquals(1_100_001L, getCount())
+        assertEquals(1_100_000L, getCount())
     }
 
     @Test
     fun `update column and read several versions`() {
         sparkSession.read()
+            .withHeader()
             .csv(SAMPLES_FILE_PATH)
             .write()
-            .format(FORMAT)
+            .format(DELTA)
             .save(TABLE)
 
         sparkSession
             .read()
+            .withHeader()
             .csv(SAMPLES_WITH_CHANGED_COLUMN_PATH)
             .write()
-            .format(FORMAT)
-            .mode(MODE)
+            .format(DELTA)
+            .mode(SaveMode.Overwrite)
             .save(TABLE)
 
-        assertEquals(ROWS_NUMBER + 1L, getCount())
+        assertEquals(ROWS_NUMBER.toLong(), getCount())
         sparkSession.read()
-            .format(FORMAT)
+            .format(DELTA)
             .load(TABLE)
-            .select("_c0") // todo
+            .select("integer_col_0")
             .show(10)
 
         sparkSession.read()
-            .format(FORMAT)
+            .format(DELTA)
             .option("versionAsOf", 0)
             .load(TABLE)
-            .select("_c0")
+            .select("integer_col_0")
             .show(10)
     }
 
+    // TODO figure out why it fails with oom when using schema
     @Test
     fun `insert once with schema`() {
         sparkSession.read()
+            .withHeader()
             .schema(SCHEMA)
             .csv(SAMPLES_FILE_PATH)
             .write()
-            .format(FORMAT)
+            .format(DELTA)
             .save(TABLE)
 
-        assertEquals(ROWS_NUMBER + 1L, getCount())
+        assertEquals(ROWS_NUMBER.toLong(), getCount())
     }
 
+    // TODO figure out why it fails with oom when using schema
     @Test
     fun `insert untyped`() {
         sparkSession.read()
+            .withHeader()
             .schema(SCHEMA)
             .csv(SAMPLES_FILE_PATH)
             .write()
-            .format(FORMAT)
+            .format(DELTA)
             .save(TABLE)
 
         sparkSession.read()
+            .withHeader()
             .csv(SAMPLES_FILE_PATH)
             .write()
-            .format(FORMAT)
-            .mode(MODE)
+            .format(DELTA)
+            .mode(SaveMode.Overwrite)
+            .option("overwriteSchema", "true")
             .save(TABLE)
     }
 
     @Test
     fun `insert as json`() {
         sparkSession.read()
+            .withHeader()
             .csv(SAMPLES_FILE_PATH)
             .write()
             .format("json")
-            .mode(MODE)
+            .mode(SaveMode.Overwrite)
             .save("delta-lake/samples-json")
     }
 
     @Test
     fun `insert as parquet`() {
         sparkSession.read()
+            .withHeader()
             .csv(SAMPLES_FILE_PATH)
             .write()
             .format("parquet")
-            .mode(MODE)
+            .mode(SaveMode.Overwrite)
             .save("delta-lake/samples-parquet")
     }
-
 
     @Test
     fun `select from delta table stored in path`() {
         sparkSession.read()
             .schema("id INT, name STRING, age INT")
-            .csv("data/students.csv")
+            .csv(STUDENTS_FILE_PATH)
             .write()
-            .format(FORMAT)
-            .mode(MODE)
+            .format(DELTA)
+            .mode(SaveMode.Overwrite)
             .save("delta-lake/students-table")
 
         sparkSession
@@ -188,9 +265,9 @@ class DeltaLakeTest {
     fun `select from delta table stored in metastore`() {
         sparkSession.read()
             .schema("id INT, name STRING, age INT")
-            .csv("data/students.csv")
+            .csv(STUDENTS_FILE_PATH)
             .write()
-            .mode(MODE)
+            .mode(SaveMode.Overwrite)
             .saveAsTable("students")
 
         sparkSession.sql("SELECT id, name, age from students;").show()
@@ -198,7 +275,9 @@ class DeltaLakeTest {
 
     private fun getCount() = sparkSession
         .read()
-        .format(FORMAT)
+        .format(DELTA)
         .load(TABLE)
         .count()
+
+    private fun DataFrameReader.withHeader() = option("header", true)
 }
