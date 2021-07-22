@@ -46,7 +46,14 @@ To exit press `Ctrl+C`
 2) Run airflow cluster: `cd airflow; docker-compose up -d`
 3) Run external sources cluster: `cd external-sources; docker-compose up -d`. 
    This will launch postgres and mongo databases needed to execute pipeline
-4) Go to `http://localhost:8079/graph?dag_id=datalake_dag` and enable `datalake_dag` by switching toggle
+4) Go to http://localhost:8079 Connections tab and create new connection:
+   - Name: spark_cluster
+   - Type: spark
+   - Master url: spark://master
+   - Port: 7077
+   - Additional config: {"deploy-mode": "cluster"}
+   
+5) Go to `http://localhost:8079/graph?dag_id=datalake_dag` and enable `datalake_dag` by switching toggle
 
 DAG should automatically start to execute. 
 Due to some bug, tasks finish in fail state despite completing successfully.
