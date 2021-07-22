@@ -92,7 +92,7 @@ class DeltaLakeTest {
             .appName("DeltaLake")
             .master("local[*]")
             .enableHiveSupport()
-            .config("spark.jars.packages", "io.delta:delta-core_2.12:0.8.0")
+            .config("spark.jars.packages", "io.delta:delta-core_2.12:1.0.0")
             .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
             .config(
                 "spark.sql.catalog.spark_catalog",
